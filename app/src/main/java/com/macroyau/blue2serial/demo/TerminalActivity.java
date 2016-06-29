@@ -226,9 +226,7 @@ public class TerminalActivity extends AppCompatActivity
     @Override
     public void onBluetoothSerialRead(String message) {
         // Print the incoming message on the terminal screen
-        tvTerminal.append(getString(R.string.terminal_message_template,
-                bluetoothSerial.getConnectedDeviceName(),
-                message));
+        tvTerminal.append(message);
         svTerminal.post(scrollTerminalToBottom);
     }
 
