@@ -13,9 +13,48 @@ import android.view.MenuItem;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.macroyau.blue2serial.BluetoothDeviceListDialog;
 import com.macroyau.blue2serial.BluetoothSerial;
 import com.macroyau.blue2serial.BluetoothSerialListener;
+
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.http.Body;
+import retrofit2.http.POST;
+
+
+class TelemetryEvent {
+    final String type;
+    final String content;
+
+    TelemetryEvent(String type, String content) {
+        this.type = type;
+        this.content = content;
+    }
+}
+
+interface TelemetryService {
+    @POST("/event")
+    Call<ResponseBody> postJson(@Body TelemetryEvent body);
+}
+
+class MotorikaTelemetryService {
+    public static TelemetryService getService(String uri) {
+        Gson gson = new GsonBuilder().create();
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(uri)
+                .addConverterFactory(GsonConverterFactory.create(gson))
+                .build();
+
+        return retrofit.create(TelemetryService.class);
+    }
+}
 
 /**
  * This is an example Bluetooth terminal application built using the Blue2Serial library.
@@ -36,6 +75,8 @@ public class TerminalActivity extends AppCompatActivity
 
     private boolean crlf = false;
 
+    private TelemetryService telemetryService;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -47,6 +88,9 @@ public class TerminalActivity extends AppCompatActivity
 
         // Create a new instance of BluetoothSerial
         bluetoothSerial = new BluetoothSerial(this, this);
+
+
+        telemetryService = MotorikaTelemetryService.getService("http://192.168.0.120:5050/");
     }
 
     @Override
@@ -225,6 +269,16 @@ public class TerminalActivity extends AppCompatActivity
         // Print the incoming message on the terminal screen
         tvTerminal.append(message);
         svTerminal.post(scrollTerminalToBottom);
+
+        telemetryService.postJson(new TelemetryEvent("pm.event", message)).enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+            }
+        });
     }
 
     @Override
